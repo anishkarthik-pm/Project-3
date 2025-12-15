@@ -1,0 +1,202 @@
+{
+  "name": "Fees Explainer - Standalone (No Python Required)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fees-start",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-start",
+      "name": "Webhook: Start Query",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "fees-explainer-start",
+      "notes": "Receives user query and returns clarifying questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// Fee Explainer Agent - Scenario Detection\n// ========================================\n\nconst userQuery = $input.item.json.query || '';\nconst queryLower = userQuery.toLowerCase();\n\n// Fee scenarios knowledge base\nconst feeScenarios = {\n  exit_load_elss: {\n    name: 'Exit Load & ELSS Lock-in Period',\n    clarifiers: [\n      'Are you asking about ELSS (tax-saving) mutual funds or non-ELSS equity funds?',\n      'Do you plan to redeem within 1 year of investment?',\n      'Is this a lumpsum investment or SIP?'\n    ],\n    bullets: [\n      {\n        text: 'ELSS funds have a mandatory 3-year lock-in period as per Section 80C of Income Tax Act. No redemption is allowed during this period.',\n        source: 'https://groww.in/p/tax-saving-funds/',\n        tags: ['ELSS']\n      },\n      {\n        text: 'For non-ELSS equity funds, exit load is typically 1% if redeemed within 1 year of investment (varies by AMC).',\n        source: 'https://groww.in/blog/what-is-exit-load-in-mutual-funds',\n        tags: ['non-ELSS', 'within_1_year']\n      },\n      {\n        text: 'Exit load (if applicable) is deducted from the redemption NAV. For example, 1% exit load on ₹10,000 redemption = ₹100 deduction.',\n        source: 'https://groww.in/blog/what-is-exit-load-in-mutual-funds',\n        tags: ['calculation']\n      },\n      {\n        text: 'Most equity funds have NIL exit load after 1 year. Check the Scheme Information Document (SID) for exact terms.',\n        source: 'https://www.amfiindia.com/investor-corner/knowledge-center/what-is-exit-load.html',\n        tags: ['non-ELSS', 'after_1_year']\n      },\n      {\n        text: 'For SIP investments in ELSS, each installment has a separate 3-year lock-in from its investment date.',\n        source: 'https://groww.in/p/tax-saving-funds/',\n        tags: ['ELSS', 'SIP']\n      },\n      {\n        text: 'Exit load collected goes back to the scheme (not to AMC), benefiting continuing investors as per SEBI regulations.',\n        source: 'https://www.sebi.gov.in/legal/circulars/oct-2012/exit-load-payment-to-distributors_24239.html',\n        tags: ['general']\n      }\n    ],\n    last_checked: '2025-12-15'\n  },\n  \n  sip_mandate_fees: {\n    name: 'SIP Mandate Fees & Cancellation',\n    clarifiers: [\n      'Are you setting up a new SIP or cancelling an existing one?',\n      'What is your bank (some banks charge for auto-debit mandates)?',\n      'Is the SIP amount above or below ₹5,000 per month?'\n    ],\n    bullets: [\n      {\n        text: 'Groww does NOT charge any fees for SIP registration, modification, or cancellation. These services are free.',\n        source: 'https://groww.in/pricing/',\n        tags: ['general']\n      },\n      {\n        text: 'Your bank may charge ₹0-50 for setting up auto-debit mandates (e-mandate/e-NACH). Check with your bank.',\n        source: 'https://groww.in/blog/sip-in-mutual-funds',\n        tags: ['setup']\n      },\n      {\n        text: 'SIP cancellation on Groww is instant and free. No penalty or exit charges for stopping SIP.',\n        source: 'https://groww.in/pricing/',\n        tags: ['cancel']\n      },\n      {\n        text: 'Failed SIP installments may incur bank charges (typically ₹100-300 for insufficient balance). This is charged by the bank, not Groww or AMC.',\n        source: 'https://groww.in/blog/sip-in-mutual-funds',\n        tags: ['failed']\n      },\n      {\n        text: 'You can pause SIP for 1-3 months or modify amount/date without any charges from Groww or AMC.',\n        source: 'https://groww.in/pricing/',\n        tags: ['modify']\n      },\n      {\n        text: 'E-mandate limit is ₹25,000 for UPI autopay and ₹15 lakh for NACH/debit mandate as per NPCI/RBI guidelines.',\n        source: 'https://www.npci.org.in/what-we-do/upi/upi-autopay',\n        tags: ['setup', 'limits']\n      }\n    ],\n    last_checked: '2025-12-15'\n  },\n  \n  expense_ratio: {\n    name: 'Expense Ratio (Direct vs Regular Plans)',\n    clarifiers: [\n      'Are you investing in Direct Plan or Regular Plan?',\n      'Which fund category: Equity, Debt, or Hybrid?',\n      'Do you want to understand how expense ratio impacts returns?'\n    ],\n    bullets: [\n      {\n        text: 'Direct Plans have lower expense ratio (0.5-1% lower) than Regular Plans because they exclude distributor commissions.',\n        source: 'https://groww.in/blog/direct-mutual-fund',\n        tags: ['general']\n      },\n      {\n        text: 'For equity funds: Direct Plan expense ratio typically 1-1.5%, Regular Plan 1.5-2.5% (as per SEBI cap of 2.25% for equity funds).',\n        source: 'https://www.sebi.gov.in/legal/circulars/sep-2018/total-expense-ratio-ter-and-performance-disclosure-for-mutual-funds_40203.html',\n        tags: ['equity']\n      },\n      {\n        text: 'For debt funds: SEBI cap is 2% for first ₹500 cr AUM, 1.75% for next ₹250 cr, 1.5% for balance. Direct plans typically 0.5-0.8% lower.',\n        source: 'https://www.sebi.gov.in/legal/circulars/sep-2018/total-expense-ratio-ter-and-performance-disclosure-for-mutual-funds_40203.html',\n        tags: ['debt']\n      },\n      {\n        text: 'Expense ratio is deducted daily from scheme NAV (not separately charged to investor). It covers fund management, operations, marketing.',\n        source: 'https://www.amfiindia.com/investor-corner/knowledge-center/expense-ratio.html',\n        tags: ['general']\n      },\n      {\n        text: 'Over 10 years, 1% lower expense ratio can increase returns by ~12-15% due to compounding (e.g., ₹10 lakh → ₹1.2-1.5 lakh extra).',\n        source: 'https://groww.in/blog/direct-mutual-fund',\n        tags: ['impact']\n      },\n      {\n        text: 'Exact expense ratio for each fund is disclosed in Monthly/Quarterly factsheets and Scheme Information Document (SID).',\n        source: 'https://www.amfiindia.com/investor-corner/knowledge-center/expense-ratio.html',\n        tags: ['general']\n      }\n    ],\n    last_checked: '2025-12-15'\n  }\n};\n\n// Detect scenario\nlet scenarioKey = 'expense_ratio'; // default\n\nif (queryLower.includes('exit load') || queryLower.includes('elss') || \n    queryLower.includes('lock-in') || queryLower.includes('lock in') || \n    queryLower.includes('redeem')) {\n  scenarioKey = 'exit_load_elss';\n} else if (queryLower.includes('sip') || queryLower.includes('mandate') || \n           queryLower.includes('auto-debit') || queryLower.includes('autopay') || \n           queryLower.includes('cancel')) {\n  scenarioKey = 'sip_mandate_fees';\n} else if (queryLower.includes('expense') || queryLower.includes('ter') || \n           queryLower.includes('direct') || queryLower.includes('regular') || \n           queryLower.includes('charges')) {\n  scenarioKey = 'expense_ratio';\n}\n\nconst scenario = feeScenarios[scenarioKey];\nconst sessionId = Date.now().toString();\n\n// Store scenario data for later use\nreturn {\n  json: {\n    session_id: sessionId,\n    scenario_key: scenarioKey,\n    scenario_name: scenario.name,\n    clarifiers: scenario.clarifiers,\n    _scenario_data: scenario // Hidden from response, used internally\n  }\n};"
+      },
+      "id": "detect-scenario",
+      "name": "Detect Scenario & Load Clarifiers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"clarifiers_required\",\n  \"scenario\": $json.scenario_name,\n  \"questions\": $json.clarifiers,\n  \"session_id\": $json.session_id,\n  \"instructions\": \"Please answer the following questions to get accurate fee information.\"\n} }}"
+      },
+      "id": "respond-clarifiers",
+      "name": "Response: Send Clarifiers",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fees-answers",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-answers",
+      "name": "Webhook: Receive Answers",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 520],
+      "webhookId": "fees-explainer-answers"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// Process Answers & Generate Explanation\n// ========================================\n\nconst answers = $input.item.json.answers || {};\nconst sessionId = $input.item.json.session_id;\n\n// Reload scenario data (in production, retrieve from session store)\n// For now, we'll re-detect from session context\nconst feeScenarios = {\n  exit_load_elss: {\n    name: 'Exit Load & ELSS Lock-in Period',\n    bullets: [\n      { text: 'ELSS funds have a mandatory 3-year lock-in period as per Section 80C of Income Tax Act. No redemption is allowed during this period.', source: 'https://groww.in/p/tax-saving-funds/', tags: ['ELSS'] },\n      { text: 'For non-ELSS equity funds, exit load is typically 1% if redeemed within 1 year of investment (varies by AMC).', source: 'https://groww.in/blog/what-is-exit-load-in-mutual-funds', tags: ['non-ELSS'] },\n      { text: 'Exit load (if applicable) is deducted from the redemption NAV. For example, 1% exit load on ₹10,000 redemption = ₹100 deduction.', source: 'https://groww.in/blog/what-is-exit-load-in-mutual-funds', tags: [] },\n      { text: 'Most equity funds have NIL exit load after 1 year. Check the Scheme Information Document (SID) for exact terms.', source: 'https://www.amfiindia.com/investor-corner/knowledge-center/what-is-exit-load.html', tags: [] },\n      { text: 'For SIP investments in ELSS, each installment has a separate 3-year lock-in from its investment date.', source: 'https://groww.in/p/tax-saving-funds/', tags: ['ELSS', 'SIP'] },\n      { text: 'Exit load collected goes back to the scheme (not to AMC), benefiting continuing investors as per SEBI regulations.', source: 'https://www.sebi.gov.in/legal/circulars/oct-2012/exit-load-payment-to-distributors_24239.html', tags: [] }\n    ],\n    last_checked: '2025-12-15'\n  },\n  sip_mandate_fees: {\n    name: 'SIP Mandate Fees & Cancellation',\n    bullets: [\n      { text: 'Groww does NOT charge any fees for SIP registration, modification, or cancellation. These services are free.', source: 'https://groww.in/pricing/', tags: [] },\n      { text: 'Your bank may charge ₹0-50 for setting up auto-debit mandates (e-mandate/e-NACH). Check with your bank.', source: 'https://groww.in/blog/sip-in-mutual-funds', tags: ['setup'] },\n      { text: 'SIP cancellation on Groww is instant and free. No penalty or exit charges for stopping SIP.', source: 'https://groww.in/pricing/', tags: ['cancel'] },\n      { text: 'Failed SIP installments may incur bank charges (typically ₹100-300 for insufficient balance). This is charged by the bank, not Groww or AMC.', source: 'https://groww.in/blog/sip-in-mutual-funds', tags: [] },\n      { text: 'You can pause SIP for 1-3 months or modify amount/date without any charges from Groww or AMC.', source: 'https://groww.in/pricing/', tags: ['modify'] },\n      { text: 'E-mandate limit is ₹25,000 for UPI autopay and ₹15 lakh for NACH/debit mandate as per NPCI/RBI guidelines.', source: 'https://www.npci.org.in/what-we-do/upi/upi-autopay', tags: ['setup'] }\n    ],\n    last_checked: '2025-12-15'\n  },\n  expense_ratio: {\n    name: 'Expense Ratio (Direct vs Regular Plans)',\n    bullets: [\n      { text: 'Direct Plans have lower expense ratio (0.5-1% lower) than Regular Plans because they exclude distributor commissions.', source: 'https://groww.in/blog/direct-mutual-fund', tags: [] },\n      { text: 'For equity funds: Direct Plan expense ratio typically 1-1.5%, Regular Plan 1.5-2.5% (as per SEBI cap of 2.25% for equity funds).', source: 'https://www.sebi.gov.in/legal/circulars/sep-2018/total-expense-ratio-ter-and-performance-disclosure-for-mutual-funds_40203.html', tags: ['equity'] },\n      { text: 'For debt funds: SEBI cap is 2% for first ₹500 cr AUM, 1.75% for next ₹250 cr, 1.5% for balance. Direct plans typically 0.5-0.8% lower.', source: 'https://www.sebi.gov.in/legal/circulars/sep-2018/total-expense-ratio-ter-and-performance-disclosure-for-mutual-funds_40203.html', tags: ['debt'] },\n      { text: 'Expense ratio is deducted daily from scheme NAV (not separately charged to investor). It covers fund management, operations, marketing.', source: 'https://www.amfiindia.com/investor-corner/knowledge-center/expense-ratio.html', tags: [] },\n      { text: 'Over 10 years, 1% lower expense ratio can increase returns by ~12-15% due to compounding.', source: 'https://groww.in/blog/direct-mutual-fund', tags: ['impact'] },\n      { text: 'Exact expense ratio for each fund is disclosed in Monthly/Quarterly factsheets and Scheme Information Document (SID).', source: 'https://www.amfiindia.com/investor-corner/knowledge-center/expense-ratio.html', tags: [] }\n    ],\n    last_checked: '2025-12-15'\n  }\n};\n\n// Determine scenario (simplified - in production, get from session)\nlet scenarioKey = 'exit_load_elss';\nconst scenario = feeScenarios[scenarioKey];\n\n// Select up to 6 relevant bullets\nconst selectedBullets = scenario.bullets.slice(0, 6).map(b => ({\n  text: b.text,\n  source: b.source\n}));\n\n// Generate explanation\nconst explanation = {\n  scenario: scenario.name,\n  last_checked: scenario.last_checked,\n  fee_details: selectedBullets,\n  disclaimer: \"This information is based on official sources and current regulations. Always verify exact fees from the fund's Scheme Information Document (SID) or factsheet.\"\n};\n\n// Prepare MCP actions\nconst timestamp = new Date().toISOString();\nconst mcpActions = [\n  {\n    action_id: 0,\n    action_type: 'notes',\n    summary: `Add notes entry: Fee Explanation: ${scenario.name}`,\n    requires_approval: true,\n    payload: {\n      entry_title: `Fee Explanation: ${scenario.name}`,\n      date: timestamp,\n      scenario: scenario.name,\n      fee_details: selectedBullets,\n      last_checked: scenario.last_checked\n    }\n  },\n  {\n    action_id: 1,\n    action_type: 'email',\n    summary: `Draft email to support@groww.in: Fee Clarification Request`,\n    requires_approval: true,\n    payload: {\n      to: 'support@groww.in',\n      subject: `Fee Clarification Request: ${scenario.name}`,\n      body: `Dear Support Team,\\n\\nI would like clarification on ${scenario.name}.\\n\\nFee Details:\\n${selectedBullets.map((b, i) => `${i+1}. ${b.text}\\n   Source: ${b.source}`).join('\\n\\n')}\\n\\nBest regards`,\n      draft_only: true\n    }\n  },\n  {\n    action_id: 2,\n    action_type: 'audit',\n    summary: `Log audit entry: Generated fee explanation`,\n    requires_approval: true,\n    payload: {\n      who: 'FeesExplainerAgent',\n      when: timestamp,\n      action: `Generated fee explanation for: ${scenario.name}`,\n      details: {\n        scenario: scenario.name,\n        bullets_count: selectedBullets.length\n      }\n    }\n  }\n];\n\nreturn {\n  json: {\n    session_id: sessionId,\n    explanation: explanation,\n    mcp_actions: mcpActions,\n    mcp_actions_pending: mcpActions.length\n  }\n};"
+      },
+      "id": "process-answers",
+      "name": "Process Answers & Generate Explanation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"explanation_ready\",\n  \"explanation\": $json.explanation,\n  \"mcp_actions_pending_approval\": $json.mcp_actions,\n  \"session_id\": $json.session_id,\n  \"next_step\": \"Please review and approve MCP actions to execute them.\"\n} }}"
+      },
+      "id": "respond-explanation",
+      "name": "Response: Send Explanation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 520]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fees-approvals",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-approvals",
+      "name": "Webhook: MCP Approvals",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 740],
+      "webhookId": "fees-explainer-approvals"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split approved actions to process individually\nconst approvedActions = $input.item.json.approved_actions || [];\nconst outputs = [];\n\nfor (const approval of approvedActions) {\n  if (approval.approved) {\n    outputs.push({\n      json: {\n        action_id: approval.action_id,\n        action_type: approval.action_type || 'notes', // Default\n        payload: approval.payload || {},\n        session_id: $input.item.json.session_id\n      }\n    });\n  }\n}\n\nreturn outputs;"
+      },
+      "id": "split-actions",
+      "name": "Split Approved Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 740]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [\n            {\n              "conditions": {\n                "options": {\n                  "caseSensitive": false\n                },\n                "conditions": [\n                  {\n                    "leftValue": "={{ $json.action_type }}",\n                    "rightValue": "notes",\n                    "operator": {\n                      "type": "string",\n                      "operation": "equals"\n                    }\n                  }\n                ]\n              },\n              "renameOutput": true,\n              "outputKey": "notes"\n            },\n            {\n              "conditions": {\n                "options": {\n                  "caseSensitive": false\n                },\n                "conditions": [\n                  {\n                    "leftValue": "={{ $json.action_type }}",\n                    "rightValue": "email",\n                    "operator": {\n                      "type": "string",\n                      "operation": "equals"\n                    }\n                  }\n                ]\n              },\n              "renameOutput": true,\n              "outputKey": "email"\n            },\n            {\n              "conditions": {\n                "options": {\n                  "caseSensitive": false\n                },\n                "conditions": [\n                  {\n                    "leftValue": "={{ $json.action_type }}",\n                    "rightValue": "audit",\n                    "operator": {\n                      "type": "string",\n                      "operation": "equals"\n                    }\n                  }\n                ]\n              },\n              "renameOutput": true,\n              "outputKey": "audit"\n            }\n          ]\n        }\n      },
+      "id": "switch-action-type",
+      "name": "Switch: Action Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 740]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulate MCP Notes Handler\nconst payload = $input.item.json.payload;\n\nreturn {\n  json: {\n    action_id: $input.item.json.action_id,\n    action_type: 'notes',\n    status: 'success',\n    message: `Notes entry added: ${payload.entry_title}`,\n    file: '/home/user/fees_explanations.md'\n  }\n};"
+      },
+      "id": "mcp-notes",
+      "name": "MCP: Append Notes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 640],
+      "notes": "Simulates appending to notes file"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulate MCP Email Handler\nconst payload = $input.item.json.payload;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\n\nreturn {\n  json: {\n    action_id: $input.item.json.action_id,\n    action_type: 'email',\n    status: 'success',\n    message: `Email draft created: draft_${timestamp}.eml`,\n    draft_path: `/home/user/email_drafts/draft_${timestamp}.eml`,\n    auto_sent: false\n  }\n};"
+      },
+      "id": "mcp-email",
+      "name": "MCP: Create Email Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 740],
+      "notes": "Simulates creating email draft (NEVER sends)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulate MCP Audit Handler\nconst payload = $input.item.json.payload;\n\nreturn {\n  json: {\n    action_id: $input.item.json.action_id,\n    action_type: 'audit',\n    status: 'success',\n    message: `Audit entry logged: ${payload.action}`,\n    file: '/home/user/audit_log.jsonl'\n  }\n};"
+      },
+      "id": "mcp-audit",
+      "name": "MCP: Log Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 840],
+      "notes": "Simulates appending to audit log"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"mcp_actions_executed\",\n  \"results\": {\n    \"executed\": $json,\n    \"message\": \"MCP actions completed successfully\"\n  }\n} }}"
+      },
+      "id": "respond-completion",
+      "name": "Response: Execution Complete",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 740]
+    }
+  ],
+  "connections": {
+    "Webhook: Start Query": {
+      "main": [[{"node": "Detect Scenario & Load Clarifiers", "type": "main", "index": 0}]]
+    },
+    "Detect Scenario & Load Clarifiers": {
+      "main": [[{"node": "Response: Send Clarifiers", "type": "main", "index": 0}]]
+    },
+    "Webhook: Receive Answers": {
+      "main": [[{"node": "Process Answers & Generate Explanation", "type": "main", "index": 0}]]
+    },
+    "Process Answers & Generate Explanation": {
+      "main": [[{"node": "Response: Send Explanation", "type": "main", "index": 0}]]
+    },
+    "Webhook: MCP Approvals": {
+      "main": [[{"node": "Split Approved Actions", "type": "main", "index": 0}]]
+    },
+    "Split Approved Actions": {
+      "main": [[{"node": "Switch: Action Type", "type": "main", "index": 0}]]
+    },
+    "Switch: Action Type": {
+      "main": [
+        [{"node": "MCP: Append Notes", "type": "main", "index": 0}],
+        [{"node": "MCP: Create Email Draft", "type": "main", "index": 0}],
+        [{"node": "MCP: Log Audit", "type": "main", "index": 0}]
+      ]
+    },
+    "MCP: Append Notes": {
+      "main": [[{"node": "Response: Execution Complete", "type": "main", "index": 0}]]
+    },
+    "MCP: Create Email Draft": {
+      "main": [[{"node": "Response: Execution Complete", "type": "main", "index": 0}]]
+    },
+    "MCP: Log Audit": {
+      "main": [[{"node": "Response: Execution Complete", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": {},
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-15T06:30:00.000Z",
+  "versionId": "2.0.0"
+}
