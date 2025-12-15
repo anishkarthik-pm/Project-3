@@ -1,0 +1,42 @@
+{
+  "name": "Groww Fees Explainer - Simple",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fees-query",
+        "responseMode": "lastNode"
+      },
+      "id": "webhook1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Simple Fees Explainer Logic\nconst query = $input.item.json.query || '';\nconst q = query.toLowerCase();\n\n// Detect scenario\nlet scenario = 'Expense Ratio';\nlet clarifiers = [\n  'Direct or Regular Plan?',\n  'Equity, Debt, or Hybrid?'\n];\n\nif (q.includes('elss') || q.includes('exit load')) {\n  scenario = 'Exit Load & ELSS';\n  clarifiers = [\n    'ELSS or non-ELSS fund?',\n    'Redeem within 1 year?',\n    'Lumpsum or SIP?'\n  ];\n} else if (q.includes('sip') || q.includes('mandate')) {\n  scenario = 'SIP Mandate Fees';\n  clarifiers = [\n    'Setting up or cancelling?',\n    'Which bank?'\n  ];\n}\n\n// Return clarifiers\nreturn {\n  json: {\n    status: 'success',\n    scenario: scenario,\n    questions: clarifiers,\n    message: 'Please answer these questions for detailed fee information'\n  }\n};"
+      },
+      "id": "code1",
+      "name": "Process Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Process Query", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-15T06:30:00.000Z",
+  "versionId": "1.0.0"
+}

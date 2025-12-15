@@ -1,0 +1,57 @@
+{
+  "name": "Groww Fees Explainer - Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fees-start",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook_start",
+      "name": "Webhook: Start Query",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Fees Explainer - Scenario Detection\nconst query = ($input.item.json.query || '').toLowerCase();\n\n// Fee scenarios database\nconst scenarios = {\n  elss: {\n    name: 'Exit Load & ELSS Lock-in Period',\n    questions: [\n      'Are you asking about ELSS (tax-saving) or non-ELSS equity funds?',\n      'Do you plan to redeem within 1 year of investment?',\n      'Is this a lumpsum investment or SIP?'\n    ],\n    fees: [\n      'ELSS has mandatory 3-year lock-in per Section 80C (https://groww.in/p/tax-saving-funds/)',\n      'Exit load typically 1% if redeemed within 1 year (https://groww.in/blog/what-is-exit-load-in-mutual-funds)',\n      'For SIP in ELSS, each installment has separate 3-year lock-in (https://groww.in/p/tax-saving-funds/)'\n    ]\n  },\n  sip: {\n    name: 'SIP Mandate Fees & Cancellation',\n    questions: [\n      'Are you setting up or cancelling a SIP?',\n      'What is your bank?',\n      'SIP amount above or below \u20b95,000/month?'\n    ],\n    fees: [\n      'Groww charges \u20b90 for SIP setup/cancellation (https://groww.in/pricing/)',\n      'Banks may charge \u20b90-50 for e-mandate setup (https://groww.in/blog/sip-in-mutual-funds)',\n      'Failed SIP may incur bank charges \u20b9100-300 (https://groww.in/blog/sip-in-mutual-funds)'\n    ]\n  },\n  expense: {\n    name: 'Expense Ratio (Direct vs Regular)',\n    questions: [\n      'Direct Plan or Regular Plan?',\n      'Equity, Debt, or Hybrid fund?',\n      'Want to understand long-term impact?'\n    ],\n    fees: [\n      'Direct Plans are 0.5-1% cheaper than Regular Plans (https://groww.in/blog/direct-mutual-fund)',\n      'Equity: Direct 1-1.5%, Regular 1.5-2.5% per SEBI cap (https://www.sebi.gov.in)',\n      'Over 10 years, 1% lower ER can increase returns by 12-15% (https://groww.in/blog/direct-mutual-fund)'\n    ]\n  }\n};\n\n// Detect scenario\nlet key = 'expense';\nif (query.includes('elss') || query.includes('exit load') || query.includes('lock')) {\n  key = 'elss';\n} else if (query.includes('sip') || query.includes('mandate') || query.includes('cancel')) {\n  key = 'sip';\n}\n\nconst scenario = scenarios[key];\nconst sessionId = Date.now().toString();\n\nreturn {\n  json: {\n    session_id: sessionId,\n    scenario: scenario.name,\n    questions: scenario.questions,\n    fees: scenario.fees,\n    last_checked: '2025-12-15',\n    status: 'clarifiers_required'\n  }\n};"
+      },
+      "id": "detect_scenario",
+      "name": "Detect Scenario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Start Query": {
+      "main": [
+        [
+          {
+            "node": "Detect Scenario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-15T06:30:00.000Z",
+  "versionId": "1.0.0"
+}
