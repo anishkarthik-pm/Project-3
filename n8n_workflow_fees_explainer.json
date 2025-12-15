@@ -1,0 +1,292 @@
+{
+  "name": "Groww MF Fees Explainer Agent with MCP",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "webhook",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger - User Query",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "fees-explainer-start"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Initialize the Fees Explainer Agent\nconst userQuery = $input.item.json.query;\n\n// Call Python agent (in production, use HTTP request or function)\nconst response = {\n  scenario: 'Exit Load & ELSS Lock-in Period', // Example\n  clarifying_questions: [\n    'Are you asking about ELSS (tax-saving) mutual funds or non-ELSS equity funds?',\n    'Do you plan to redeem within 1 year of investment?',\n    'Is this a lumpsum investment or SIP?'\n  ],\n  session_id: Date.now().toString()\n};\n\nreturn {\n  json: {\n    session_id: response.session_id,\n    scenario: response.scenario,\n    clarifiers: response.clarifying_questions,\n    user_query: userQuery\n  }\n};"
+      },
+      "id": "init-agent",
+      "name": "Initialize Agent",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"clarifiers_required\",\n  \"scenario\": $json.scenario,\n  \"questions\": $json.clarifiers,\n  \"session_id\": $json.session_id,\n  \"instructions\": \"Please answer the following questions to get accurate fee information\"\n} }}"
+      },
+      "id": "send-clarifiers",
+      "name": "Send Clarifying Questions",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "mode": "webhook",
+        "options": {}
+      },
+      "id": "webhook-answers",
+      "name": "Webhook - Receive Answers",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "webhookId": "fees-explainer-answers"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process clarifying answers\nconst answers = $input.item.json.answers;\nconst sessionId = $input.item.json.session_id;\n\n// Call agent.process_clarifiers(answers)\n// This would fetch from Python agent or recreate logic\n\nconst explanation = {\n  scenario: 'Exit Load & ELSS Lock-in Period',\n  last_checked: '2025-12-15',\n  fee_details: [\n    {\n      text: 'ELSS funds have a mandatory 3-year lock-in period as per Section 80C of Income Tax Act.',\n      source: 'https://groww.in/p/tax-saving-funds/'\n    },\n    {\n      text: 'For SIP investments in ELSS, each installment has a separate 3-year lock-in from its investment date.',\n      source: 'https://groww.in/p/tax-saving-funds/'\n    },\n    {\n      text: 'Exit load (if applicable) is deducted from the redemption NAV.',\n      source: 'https://groww.in/blog/what-is-exit-load-in-mutual-funds'\n    }\n  ],\n  disclaimer: 'This information is based on official sources. Always verify exact fees from the fund\\'s SID.'\n};\n\nconst mcpActions = [\n  {\n    action_id: 0,\n    action_type: 'notes',\n    summary: 'Add notes entry: Fee Explanation: Exit Load & ELSS Lock-in Period',\n    payload: {\n      entry_title: 'Fee Explanation: Exit Load & ELSS Lock-in Period',\n      date: new Date().toISOString(),\n      scenario: 'Exit Load & ELSS Lock-in Period',\n      fee_details: explanation.fee_details\n    }\n  },\n  {\n    action_id: 1,\n    action_type: 'email',\n    summary: 'Draft email to support@groww.in',\n    payload: {\n      to: 'support@groww.in',\n      subject: 'Fee Clarification Request: Exit Load & ELSS Lock-in Period',\n      draft_only: true\n    }\n  },\n  {\n    action_id: 2,\n    action_type: 'audit',\n    summary: 'Log audit entry',\n    payload: {\n      who: 'FeesExplainerAgent',\n      when: new Date().toISOString(),\n      action: 'Generated fee explanation for: Exit Load & ELSS Lock-in Period'\n    }\n  }\n];\n\nreturn {\n  json: {\n    session_id: sessionId,\n    explanation: explanation,\n    mcp_actions: mcpActions,\n    answers: answers\n  }\n};"
+      },
+      "id": "process-answers",
+      "name": "Process Answers & Generate Explanation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"explanation_ready\",\n  \"explanation\": $json.explanation,\n  \"mcp_actions_pending_approval\": $json.mcp_actions,\n  \"session_id\": $json.session_id,\n  \"next_step\": \"Please review and approve MCP actions\"\n} }}"
+      },
+      "id": "send-explanation",
+      "name": "Send Explanation & MCP Actions",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "mode": "webhook",
+        "options": {}
+      },
+      "id": "webhook-approvals",
+      "name": "Webhook - MCP Action Approvals",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 700],
+      "webhookId": "fees-explainer-approvals"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action_type }}",
+              "operation": "equals",
+              "value2": "notes"
+            }
+          ]
+        }
+      },
+      "id": "switch-action-type",
+      "name": "Switch: MCP Action Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [450, 700]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentPath": "/home/user/fees_explanations.md",
+        "content": "={{ \"\\n\\n## \" + $json.payload.entry_title + \"\\n\" +\n  \"**Date:** \" + $json.payload.date + \"\\n\" +\n  \"**Scenario:** \" + $json.payload.scenario + \"\\n\\n\" +\n  \"**Fee Details:**\\n\" +\n  $json.payload.fee_details.map((d, i) => `${i+1}. ${d.text}\\n   Source: ${d.source}`).join('\\n') +\n  \"\\n\\n---\" }}"
+      },
+      "id": "mcp-notes-append",
+      "name": "MCP: Append to Notes",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [650, 600],
+      "notes": "This simulates MCP notes tool - would be replaced with actual MCP server call"
+    },
+    {
+      "parameters": {
+        "operation": "draft",
+        "to": "={{ $json.payload.to }}",
+        "subject": "={{ $json.payload.subject }}",
+        "message": "={{ \"Subject: Fee Clarification - \" + $json.payload.scenario + \"\\n\\n\" +\n  \"Dear Support Team,\\n\\n\" +\n  \"Please find the fee clarification details below.\\n\\n\" +\n  \"Best regards\" }}"
+      },
+      "id": "mcp-email-draft",
+      "name": "MCP: Create Email Draft",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [650, 700],
+      "notes": "This would integrate with actual email MCP server"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "logFile": "/home/user/audit_log.jsonl",
+        "logEntry": "={{ JSON.stringify($json.payload) }}"
+      },
+      "id": "mcp-audit-log",
+      "name": "MCP: Log Audit Entry",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [650, 800],
+      "notes": "Audit log MCP action"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"mcp_actions_executed\",\n  \"results\": {\n    \"executed\": $json.executed || [],\n    \"action_type\": $json.action_type,\n    \"message\": \"MCP action completed successfully\"\n  }\n} }}"
+      },
+      "id": "send-completion",
+      "name": "Send Completion Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/agent/execute",
+        "options": {
+          "timeout": 30000
+        },
+        "bodyParametersJson": "={{ JSON.stringify({\n  \"query\": $json.query\n}) }}"
+      },
+      "id": "http-agent-call",
+      "name": "HTTP: Call Python Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 400],
+      "notes": "Optional: Call external Python agent API"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger - User Query": {
+      "main": [
+        [
+          {
+            "node": "Initialize Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Clarifying Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Receive Answers": {
+      "main": [
+        [
+          {
+            "node": "Process Answers & Generate Explanation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Answers & Generate Explanation": {
+      "main": [
+        [
+          {
+            "node": "Send Explanation & MCP Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - MCP Action Approvals": {
+      "main": [
+        [
+          {
+            "node": "Switch: MCP Action Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: MCP Action Type": {
+      "main": [
+        [
+          {
+            "node": "MCP: Append to Notes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MCP: Create Email Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MCP: Log Audit Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP: Append to Notes": {
+      "main": [
+        [
+          {
+            "node": "Send Completion Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP: Create Email Draft": {
+      "main": [
+        [
+          {
+            "node": "Send Completion Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP: Log Audit Entry": {
+      "main": [
+        [
+          {
+            "node": "Send Completion Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 3,
+  "updatedAt": "2025-12-15T00:00:00.000Z",
+  "versionId": "1.0.0"
+}

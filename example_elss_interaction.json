@@ -1,0 +1,182 @@
+{
+  "example_name": "ELSS Exit Load Query",
+  "description": "User wants to understand ELSS lock-in and exit load for SIP investments",
+
+  "step_1_user_query": {
+    "endpoint": "POST /webhook/fees-explainer-start",
+    "payload": {
+      "query": "I want to invest in ELSS through SIP. What is the lock-in period and exit load?"
+    },
+    "expected_response": {
+      "status": "clarifiers_required",
+      "scenario": "Exit Load & ELSS Lock-in Period",
+      "questions": [
+        "Are you asking about ELSS (tax-saving) mutual funds or non-ELSS equity funds?",
+        "Do you plan to redeem within 1 year of investment?",
+        "Is this a lumpsum investment or SIP?"
+      ],
+      "session_id": "<generated>"
+    }
+  },
+
+  "step_2_user_answers": {
+    "endpoint": "POST /webhook/fees-explainer-answers",
+    "payload": {
+      "session_id": "1734234567890",
+      "answers": {
+        "Are you asking about ELSS (tax-saving) mutual funds or non-ELSS equity funds?": "ELSS",
+        "Do you plan to redeem within 1 year of investment?": "No, after 3 years",
+        "Is this a lumpsum investment or SIP?": "SIP"
+      }
+    },
+    "expected_response": {
+      "status": "explanation_ready",
+      "explanation": {
+        "scenario": "Exit Load & ELSS Lock-in Period",
+        "last_checked": "2025-12-15",
+        "fee_details": [
+          {
+            "text": "ELSS funds have a mandatory 3-year lock-in period as per Section 80C of Income Tax Act. No redemption is allowed during this period.",
+            "source": "https://groww.in/p/tax-saving-funds/"
+          },
+          {
+            "text": "For SIP investments in ELSS, each installment has a separate 3-year lock-in from its investment date.",
+            "source": "https://groww.in/p/tax-saving-funds/"
+          },
+          {
+            "text": "Exit load (if applicable) is deducted from the redemption NAV. For example, 1% exit load on ₹10,000 redemption = ₹100 deduction.",
+            "source": "https://groww.in/blog/what-is-exit-load-in-mutual-funds"
+          },
+          {
+            "text": "Exit load collected goes back to the scheme (not to AMC), benefiting continuing investors as per SEBI regulations.",
+            "source": "https://www.sebi.gov.in/legal/circulars/oct-2012/exit-load-payment-to-distributors_24239.html"
+          }
+        ],
+        "disclaimer": "This information is based on official sources and current regulations. Always verify exact fees from the fund's Scheme Information Document (SID) or factsheet."
+      },
+      "mcp_actions_pending_approval": [
+        {
+          "action_id": 0,
+          "action_type": "notes",
+          "summary": "Add notes entry: Fee Explanation: Exit Load & ELSS Lock-in Period",
+          "payload": {
+            "entry_title": "Fee Explanation: Exit Load & ELSS Lock-in Period",
+            "scenario": "Exit Load & ELSS Lock-in Period",
+            "fee_details": "<see above>"
+          }
+        },
+        {
+          "action_id": 1,
+          "action_type": "email",
+          "summary": "Draft email to support@groww.in: Fee Clarification Request: Exit Load & ELSS Lock-in Period",
+          "payload": {
+            "to": "support@groww.in",
+            "subject": "Fee Clarification Request: Exit Load & ELSS Lock-in Period",
+            "draft_only": true
+          }
+        },
+        {
+          "action_id": 2,
+          "action_type": "audit",
+          "summary": "Log audit entry: Generated fee explanation for: Exit Load & ELSS Lock-in Period",
+          "payload": {
+            "who": "FeesExplainerAgent",
+            "action": "Generated fee explanation for: Exit Load & ELSS Lock-in Period"
+          }
+        }
+      ]
+    }
+  },
+
+  "step_3_user_approvals": {
+    "endpoint": "POST /webhook/fees-explainer-approvals",
+    "payload": {
+      "session_id": "1734234567890",
+      "approved_actions": [
+        {
+          "action_id": 0,
+          "approved": true,
+          "comment": "Yes, save to notes"
+        },
+        {
+          "action_id": 1,
+          "approved": true,
+          "comment": "Yes, create draft email"
+        },
+        {
+          "action_id": 2,
+          "approved": true,
+          "comment": "Yes, log audit entry"
+        }
+      ]
+    },
+    "expected_response": {
+      "status": "mcp_actions_executed",
+      "results": {
+        "executed": [
+          {
+            "action_id": 0,
+            "action_type": "notes",
+            "result": {
+              "status": "success",
+              "tool": "append_to_notes",
+              "message": "Entry appended: Fee Explanation: Exit Load & ELSS Lock-in Period",
+              "file": "/home/user/fees_explanations.md",
+              "bytes_written": 1247
+            }
+          },
+          {
+            "action_id": 1,
+            "action_type": "email",
+            "result": {
+              "status": "success",
+              "tool": "create_email_draft",
+              "message": "Email draft created: draft_20251215_103045.eml",
+              "draft_path": "/home/user/email_drafts/draft_20251215_103045.eml",
+              "auto_sent": false
+            }
+          },
+          {
+            "action_id": 2,
+            "action_type": "audit",
+            "result": {
+              "status": "success",
+              "tool": "log_audit_entry",
+              "message": "Audit entry logged: Generated fee explanation for: Exit Load & ELSS Lock-in Period",
+              "file": "/home/user/audit_log.jsonl"
+            }
+          }
+        ],
+        "skipped": [],
+        "errors": []
+      }
+    }
+  },
+
+  "verification": {
+    "notes_file": {
+      "path": "/home/user/fees_explanations.md",
+      "expected_content": "## Fee Explanation: Exit Load & ELSS Lock-in Period\n**Date:** 2025-12-15T10:30:45.123Z\n**Scenario:** Exit Load & ELSS Lock-in Period\n..."
+    },
+    "email_draft": {
+      "path": "/home/user/email_drafts/draft_20251215_103045.eml",
+      "expected_headers": {
+        "To": "support@groww.in",
+        "Subject": "Fee Clarification Request: Exit Load & ELSS Lock-in Period",
+        "X-Draft": "true"
+      }
+    },
+    "audit_log": {
+      "path": "/home/user/audit_log.jsonl",
+      "expected_entry": {
+        "who": "FeesExplainerAgent",
+        "action": "Generated fee explanation for: Exit Load & ELSS Lock-in Period",
+        "details": {
+          "scenario": "Exit Load & ELSS Lock-in Period",
+          "clarifiers_count": 3,
+          "bullets_count": 4
+        }
+      }
+    }
+  }
+}

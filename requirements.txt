@@ -1,0 +1,27 @@
+# Fees Explainer Agent - Python Dependencies
+# ==========================================
+
+# Core dependencies (agent uses Python stdlib only)
+# No external dependencies required for basic functionality
+
+# Optional: For enhanced features
+
+# HTTP server (if running agent as API)
+flask>=3.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Type checking
+mypy>=1.5.0
+
+# Linting
+pylint>=3.0.0
+black>=23.0.0
+
+# JSON schema validation
+jsonschema>=4.19.0
+
+# Environment variables
+python-dotenv>=1.0.0

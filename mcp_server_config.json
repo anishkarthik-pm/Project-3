@@ -1,0 +1,142 @@
+{
+  "name": "Groww Fees Explainer MCP Server",
+  "version": "1.0.0",
+  "description": "MCP server providing Notes, Email, and Audit tools for the Fees Explainer Agent",
+  "tools": [
+    {
+      "name": "append_to_notes",
+      "description": "Appends a fee explanation entry to the notes/documentation file",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entry_title": {
+            "type": "string",
+            "description": "Title of the notes entry (e.g., 'Fee Explanation: Exit Load & ELSS')"
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO timestamp of the entry"
+          },
+          "scenario": {
+            "type": "string",
+            "description": "The fee scenario name"
+          },
+          "clarifiers": {
+            "type": "object",
+            "description": "Questions and answers from the clarification phase"
+          },
+          "fee_details": {
+            "type": "array",
+            "description": "Array of fee details with text and source URLs",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              },
+              "required": ["text", "source"]
+            }
+          },
+          "last_checked": {
+            "type": "string",
+            "description": "Date when the fee information was last verified"
+          }
+        },
+        "required": ["entry_title", "date", "scenario", "fee_details", "last_checked"]
+      },
+      "approval_required": true,
+      "approval_prompt": "Do you want to append this fee explanation to your notes?",
+      "handler": "notes_handler.append_entry"
+    },
+    {
+      "name": "create_email_draft",
+      "description": "Creates a draft email to support/advisor with fee clarification details. Does NOT auto-send.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Recipient email address (e.g., support@groww.in)"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject line"
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body content with fee details and sources"
+          },
+          "draft_only": {
+            "type": "boolean",
+            "description": "Must be true - never auto-send",
+            "const": true
+          }
+        },
+        "required": ["to", "subject", "body", "draft_only"]
+      },
+      "approval_required": true,
+      "approval_prompt": "Do you want to create this email draft? (It will NOT be sent automatically)",
+      "handler": "email_handler.create_draft"
+    },
+    {
+      "name": "log_audit_entry",
+      "description": "Logs an audit trail entry for compliance and tracking",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "who": {
+            "type": "string",
+            "description": "Entity that performed the action (e.g., 'FeesExplainerAgent')"
+          },
+          "when": {
+            "type": "string",
+            "description": "ISO timestamp of the action"
+          },
+          "action": {
+            "type": "string",
+            "description": "Description of the action performed"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional metadata about the action"
+          }
+        },
+        "required": ["who", "when", "action"]
+      },
+      "approval_required": true,
+      "approval_prompt": "Do you want to log this audit entry?",
+      "handler": "audit_handler.log_entry"
+    }
+  ],
+  "resources": [
+    {
+      "uri": "file:///home/user/fees_explanations.md",
+      "name": "Fee Explanations Notes",
+      "description": "Markdown file containing all fee explanation entries",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "file:///home/user/audit_log.jsonl",
+      "name": "Audit Log",
+      "description": "JSONL file containing audit trail entries",
+      "mimeType": "application/jsonl"
+    }
+  ],
+  "approval_mechanism": {
+    "type": "interactive",
+    "description": "All MCP tool calls require explicit user approval before execution",
+    "approval_flow": [
+      "1. Agent generates MCP action request",
+      "2. User is presented with action summary and full payload",
+      "3. User approves or rejects each action individually",
+      "4. Only approved actions are executed",
+      "5. Execution results are returned to agent and user"
+    ],
+    "rejection_handling": "Rejected actions are skipped and logged. Agent continues with approved actions only."
+  }
+}
