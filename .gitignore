@@ -46,6 +46,10 @@ audit_log.jsonl
 .env
 .env.local
 
+# Google API credentials (sensitive!)
+credentials.json
+token.json
+
 # OS
 .DS_Store
 Thumbs.db

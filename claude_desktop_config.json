@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "groww-fees-explainer": {
+      "command": "python",
+      "args": [
+        "/home/user/Project-3/google_mcp_server.py"
+      ],
+      "env": {
+        "FEES_EXPLAINER_SPREADSHEET_ID": "your_google_spreadsheet_id_here",
+        "GOOGLE_CREDENTIALS_PATH": "/home/user/Project-3/credentials.json",
+        "GOOGLE_TOKEN_PATH": "/home/user/Project-3/token.json"
+      }
+    }
+  }
+}
