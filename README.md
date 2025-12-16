@@ -6,7 +6,38 @@ AI agent that explains mutual fund fees using official sources only.
 
 ## 🚀 Quick Start
 
-### n8n Chat Flow (Recommended)
+### 🎯 Option 1: MCP Server for Claude Desktop (RECOMMENDED)
+
+**Connect directly to Claude Desktop** with Google Sheets, Docs, and Gmail integration.
+
+**Setup (5 minutes):**
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Set up Google credentials
+python setup_google_credentials.py
+
+# 3. Follow the guided setup, then run auth
+python setup_google_credentials.py --auth
+
+# 4. Configure Claude Desktop
+# See: SETUP_MCP_CLAUDE.md for complete instructions
+```
+
+**Features:**
+- ✅ Save explanations to Google Sheets
+- ✅ Create docs in Google Docs
+- ✅ Draft emails in Gmail (approval-gated)
+- ✅ Compliance audit logging
+- ✅ Works directly with Claude Desktop
+
+**Documentation:** See [`SETUP_MCP_CLAUDE.md`](SETUP_MCP_CLAUDE.md)
+
+---
+
+### Option 2: n8n Chat Flow
 
 **1. Install n8n**
 ```bash
@@ -28,7 +59,7 @@ See: `SIMPLE_IMPORT.md` for details
 
 ---
 
-### Python API (Alternative)
+### Option 3: Python API
 
 **Start Server**
 ```bash
@@ -53,11 +84,19 @@ python test_agent.py
 
 | File | Purpose |
 |------|---------|
-| `fees_explainer_chat_flow.json` | **Import this into n8n** |
-| `SIMPLE_IMPORT.md` | Setup guide |
-| `fees_explainer_agent.py` | Python agent |
-| `api_server.py` | Flask API |
-| `mcp_handlers.py` | MCP tools |
+| **MCP Server (Claude Desktop)** | |
+| `google_mcp_server.py` | **MCP server with Google APIs** |
+| `SETUP_MCP_CLAUDE.md` | **Complete setup guide** |
+| `setup_google_credentials.py` | Google auth setup script |
+| `claude_desktop_config.json` | Example Claude config |
+| `agent_prompt.md` | Agent behavior guide |
+| **n8n Workflow** | |
+| `fees_explainer_chat_flow.json` | n8n workflow file |
+| `SIMPLE_IMPORT.md` | n8n setup guide |
+| **Python Components** | |
+| `fees_explainer_agent.py` | Core agent logic |
+| `api_server.py` | Flask API server |
+| `mcp_handlers.py` | Local MCP tools |
 | `test_agent.py` | Tests |
 
 ---
