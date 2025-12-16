@@ -322,8 +322,8 @@ class GoogleMCPServer:
             }
 
         except HttpError as e:
-            if e.resp.status == 404:
-                # Sheet doesn't exist, try to create it
+            if e.resp.status == 404 or e.resp.status == 400:
+                # Sheet doesn't exist (404) or range is invalid (400), try to create it
                 return await self._create_sheet_and_append(service, spreadsheet_id, row_data, args)
             raise
 
@@ -565,8 +565,8 @@ class GoogleMCPServer:
             }
 
         except HttpError as e:
-            if e.resp.status == 404:
-                # Create audit sheet
+            if e.resp.status == 404 or e.resp.status == 400:
+                # Create audit sheet (404 = not found, 400 = invalid range)
                 headers = ['Timestamp', 'Who', 'Action', 'Details']
 
                 service.spreadsheets().batchUpdate(
